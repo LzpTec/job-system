@@ -87,6 +87,10 @@ Default: `undefined`
 
 The data that will be sent to the Job.
 
+### complete()
+
+Wait all jobs in the queue to complete.
+
 ### shutdown(waitForComplete?)
 
 Shutdown the Job System.

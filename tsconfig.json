@@ -19,11 +19,11 @@
       "ES2019"
     ]
   },
-  "include": [
-    "./src/**/*.ts"
+  "files": [
+    "./src/index.ts"
   ],
   "exclude": [
     "dist",
     "node_modules"
-  ],
+  ]
 }
