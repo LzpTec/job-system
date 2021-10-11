@@ -1,0 +1,29 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "./src",
+    "module": "CommonJS",
+    "target": "ES2019",
+    "moduleResolution": "node",
+    "strict": true,
+    "alwaysStrict": true,
+    "sourceMap": true,
+    "declaration": true,
+    "importHelpers": true,
+    "esModuleInterop": true,
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "lib": [
+      "ES2019"
+    ]
+  },
+  "include": [
+    "./src/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+}
