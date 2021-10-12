@@ -2,6 +2,8 @@ import { EventEmitter, once } from 'events';
 import os from 'os';
 import * as path from 'path';
 import { Worker } from 'worker_threads';
+import { NoExtraProperties } from '.';
+import { Job } from './job';
 import { SerializableValue, Transferable } from './types-utility';
 
 export interface JobSystemSetting {
@@ -29,9 +31,34 @@ class JobWorker {
     }
 }
 
+class JobHandle<T> {
+    readonly #job: Promise<T>;
+
+    constructor(job: Promise<T>) {
+        this.#job = job;
+    }
+
+    public async complete() {
+        return this.#job;
+    }
+}
+
 const cpuSize = os.cpus().length;
 
 export class JobSystem {
+
+    // class JobHandle<T>{
+    //     readonly #job: Promise<T>;
+
+    //     private constructor(job: Promise<T>) {
+    //         this.#job = job;
+    //     }
+
+    //     public async getResult() {
+    //         return this.#job;
+    //     }
+    // }
+
     #eventStream = new EventEmitter();
     #pool: JobWorker[] = [];
     #poolSettings: JobSystemSetting = {
@@ -78,6 +105,15 @@ export class JobSystem {
 
     /**
      * @param job The job to run.
+     * 
+     * @returns Job result
+     */
+    schedule<T = any>(
+        job: NoExtraProperties<Job<T>>
+    ): JobHandle<T>;
+
+    /**
+     * @param job The job to run.
      * @param data data to worker(Needs to be serializable).
      * 
      * @returns Job result
@@ -100,15 +136,32 @@ export class JobSystem {
         transferList: Transferable[]
     ): Promise<T>;
 
-    public async schedule<T = any, D extends SerializableValue = any>(
-        job: (data?: D) => T | Promise<T>,
+    /**
+     * @param job The job to run.
+     * @param transferList list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
+     * 
+     * @returns Job result
+     */
+    schedule<T = any>(
+        job: NoExtraProperties<Job<T>>,
+        transferList: Transferable[]
+    ): JobHandle<T>;
+
+    public schedule<T = any, D extends SerializableValue = any>(
+        job: ((data?: D) => T | Promise<T>) | NoExtraProperties<Job<T>>,
         data?: D,
         transferList?: Transferable[]
     ) {
         if (this.#isShutdown)
             throw new Error("This Job System is shutdown!");
 
-        const execString = `async () => await (${job.toString()})(${JSON.stringify(data)});`;
+        let execString;
+        if (job instanceof Job) {
+            const fn = job.execute.toString();
+            execString = `async () => await ((function () ${fn.slice(fn.indexOf("{"), fn.lastIndexOf("}") + 1)}).apply({data:${JSON.stringify(job.data)}}));`;
+        } else {
+            execString = `async () => await (${job.toString()})(${JSON.stringify(data)});`;
+        }
 
         const worker = this.#selectWorker();
         const uid = worker.getUid();
@@ -118,9 +171,9 @@ export class JobSystem {
         worker.instance.postMessage({
             uid: uid,
             handler: execString
-        }, transferList);
+        }, (job instanceof Job) ? job.transfer : transferList);
 
-        return once(this.#eventStream, `uid-${uid}`)
+        const result = once(this.#eventStream, `uid-${uid}`)
             .then(([res]) => {
                 worker.active--;
                 this.#active--;
@@ -146,6 +199,8 @@ export class JobSystem {
 
                 return res.data as T;
             });
+
+        return (job instanceof Job) ? new JobHandle<T>(result) : result;
     }
 
     /**

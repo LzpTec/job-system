@@ -1,11 +1,34 @@
 const test = require('ava');
 const JobSystem = require(__dirname + '/../dist/index.js').JobSystem;
+const Job = require(__dirname + '/../dist/index.js').Job;
 
-test('schedule', async t => {
+test('schedule function', async t => {
     const jobSystem = new JobSystem();
     const job = ({ a, b }) => a * b;
 
     await jobSystem.schedule(job, { a: 3, b: 20 })
+        .then(result => {
+            t.deepEqual(result, 60);
+            t.pass();
+        }).catch(err => {
+            t.fail(err);
+        });
+
+    jobSystem.shutdown();
+});
+
+test('schedule job', async t => {
+    const jobSystem = new JobSystem();
+    class MathJob extends Job {
+        data = { a: 3, b: 20 };
+        execute() {
+            return this.data.a * this.data.b;
+        }
+    }
+    const job = new MathJob();
+
+    await jobSystem.schedule(job)
+        .complete()
         .then(result => {
             t.deepEqual(result, 60);
             t.pass();

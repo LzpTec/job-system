@@ -8,11 +8,7 @@ function worker() {
         const { handler, uid } = msg;
 
         try {
-            const fn: any | Promise<any> = eval(handler)();
-
-            const data = (typeof fn.then === "function" && typeof fn.catch === "function")
-                ? await fn
-                : fn;
+            const data = await eval(handler)();
 
             parentPort?.postMessage({
                 uid,
