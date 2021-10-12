@@ -14,6 +14,7 @@ pnpm i @lzptec/job-system
 ```
 
 # Usage
+The following examples uses typescript
 
 ## Basic
 ```ts
@@ -50,7 +51,7 @@ class MultiplicationJob extends Job<number>{
     }
 
     // This method will be called on the worker thread.
-    execute() {
+    override execute() {
         return this.data.a * this.data.b;
     }
 }
@@ -69,7 +70,7 @@ class LogJob extends Job<void>{
     // This is optional, only use this to have access to types on execute() / .data
     override data!: number;
 
-    execute() {
+    override execute() {
         console.log(`Hello from Job n${this.data}`);
     }
 }
