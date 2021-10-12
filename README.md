@@ -32,7 +32,7 @@ jobSystem.shutdown();
 
 ```
 
-## Advanded
+## Advanced
 ```ts
 import { JobSystem, Job } from '@lzptec/job-system';
 
