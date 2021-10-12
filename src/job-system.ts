@@ -33,32 +33,27 @@ class JobWorker {
 
 class JobHandle<T> {
     readonly #job: Promise<T>;
+    #isCompleted: boolean = false;
 
     constructor(job: Promise<T>) {
-        this.#job = job;
+        this.#job = job.finally(() => {
+            this.#isCompleted = true;
+        });
     }
 
     public async complete() {
         return this.#job;
     }
+
+    public get isCompleted() {
+        return this.#isCompleted;
+    }
+
 }
 
 const cpuSize = os.cpus().length;
 
 export class JobSystem {
-
-    // class JobHandle<T>{
-    //     readonly #job: Promise<T>;
-
-    //     private constructor(job: Promise<T>) {
-    //         this.#job = job;
-    //     }
-
-    //     public async getResult() {
-    //         return this.#job;
-    //     }
-    // }
-
     #eventStream = new EventEmitter();
     #pool: JobWorker[] = [];
     #poolSettings: JobSystemSetting = {
@@ -103,6 +98,7 @@ export class JobSystem {
         job: () => T | Promise<T>
     ): Promise<T>;
 
+    // TODO: Add dependsOn to the schedule.
     /**
      * @param job The job to run.
      * 
@@ -135,17 +131,6 @@ export class JobSystem {
         data: D,
         transferList: Transferable[]
     ): Promise<T>;
-
-    /**
-     * @param job The job to run.
-     * @param transferList list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
-     * 
-     * @returns Job result
-     */
-    schedule<T = any>(
-        job: NoExtraProperties<Job<T>>,
-        transferList: Transferable[]
-    ): JobHandle<T>;
 
     public schedule<T = any, D extends SerializableValue = any>(
         job: ((data?: D) => T | Promise<T>) | NoExtraProperties<Job<T>>,
