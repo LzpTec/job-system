@@ -2,6 +2,7 @@ import { EventEmitter, once } from 'events';
 import os from 'os';
 import * as path from 'path';
 import { Worker } from 'worker_threads';
+import { SerializableValue, Transferable } from './types-utility';
 
 export interface JobSystemSetting {
     maxWorkers?: number;
@@ -68,13 +69,44 @@ export class JobSystem {
 
     /**
      * @param job The job to run.
+     * 
+     * @returns Job result
+     */
+    schedule<T = any>(
+        job: () => T | Promise<T>
+    ): Promise<T>;
+
+    /**
+     * @param job The job to run.
      * @param data data to worker(Needs to be serializable).
      * 
      * @returns Job result
      */
-    public async schedule(job: Function, data?: any) {
+    schedule<T = any, D extends SerializableValue = any>(
+        job: (data: D) => T | Promise<T>,
+        data: D
+    ): Promise<T>;
+
+    /**
+     * @param job The job to run.
+     * @param data data to worker(Needs to be serializable).
+     * @param transferList list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
+     * 
+     * @returns Job result
+     */
+    schedule<T = any, D extends SerializableValue = any>(
+        job: (data: D) => T | Promise<T>,
+        data: D,
+        transferList: Transferable[]
+    ): Promise<T>;
+
+    public async schedule<T = any, D extends SerializableValue = any>(
+        job: (data?: D) => T | Promise<T>,
+        data?: D,
+        transferList?: Transferable[]
+    ) {
         if (this.#isShutdown)
-            throw new Error("This Job System is shutdown!")
+            throw new Error("This Job System is shutdown!");
 
         const execString = `async () => await (${job.toString()})(${JSON.stringify(data)});`;
 
@@ -82,10 +114,11 @@ export class JobSystem {
         const uid = worker.getUid();
         worker.active++;
         this.#active++;
+
         worker.instance.postMessage({
             uid: uid,
-            handler: execString,
-        });
+            handler: execString
+        }, transferList);
 
         return once(this.#eventStream, `uid-${uid}`)
             .then(([res]) => {
@@ -111,7 +144,7 @@ export class JobSystem {
                 if (res.error)
                     throw res.error;
 
-                return res.data;
+                return res.data as T;
             });
     }
 
