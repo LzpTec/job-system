@@ -1,7 +1,7 @@
 # @lzptec/job-system
 A library to implement a Job System in nodejs using worker_threads.
 
-## Installation
+# Installation
 
 npm
 ```sh
@@ -13,9 +13,9 @@ pnpm
 pnpm i @lzptec/job-system
 ```
 
-## Usage
+# Usage
 
-### Basic
+## Basic
 ```ts
 import { JobSystem } from '@lzptec/job-system';
 
@@ -23,17 +23,79 @@ const jobSystem = new JobSystem();
 const job = ({ a, b }) => a * b;
 
 const result = await jobSystem.schedule(job, { a: 2, b: 5 });
-console.log(result); 
-// 10
+// OR
+// const result = await jobSystem.schedule(({ a, b }) => a * b, { a: 2, b: 5 });
+console.log(result); // 10
 
-// If you dont need it anymore.
+// If you dont need the job system anymore.
 jobSystem.shutdown();
 
 ```
 
-## API
+## Advanded
+```ts
+import { JobSystem, Job } from '@lzptec/job-system';
 
-### JobSystem(settings?)
+const jobSystem = new JobSystem();
+
+// Here we create a class specific for this job.
+class MultiplicationJob extends Job<number>{
+    // This is optional, only use this to have access to types on execute() / .data
+    override data!: { a: number, b: number };
+
+    // The constructor is optional, more on that bellow
+    constructor(data: { a: number, b: number }) {
+        super();
+        this.data = data;
+    }
+
+    // This method will be called on the worker thread.
+    execute() {
+        return this.data.a * this.data.b;
+    }
+}
+
+const job = new MultiplicationJob({ a: 2, b: 5 });
+
+// When we schedule a Job<T> the return will be a JobHandle<T>.
+const jobHandle = jobSystem.schedule(job);
+
+// If we want to get the result, we need to call complete()
+const result = await jobHandle.complete();
+console.log(result); // 10
+
+// Here we create a class specific for this job.
+class LogJob extends Job<void>{
+    // This is optional, only use this to have access to types on execute() / .data
+    override data!: number;
+
+    execute() {
+        console.log(`Hello from Job n${this.data}`);
+    }
+}
+
+// We can use the JobHandle<T> as Dependency to another job, this will ensure that a job run only after the dependency job.
+const job1 = new LogJob();
+job1.data = 1;
+const job2 = new LogJob();
+job2.data = 2;
+
+const job1Handle = jobSystem.schedule(job1);
+const job2Handle = jobSystem.schedule(job2, [job1Handle]);
+
+await job2Handle.complete();
+// Console
+// -> Hello from Job n1
+// -> Hello from Job n2
+
+// If you dont need the job system anymore.
+jobSystem.shutdown();
+
+```
+
+# API
+
+## JobSystem(settings?)
 
 Returns a new instance of JobSystem!
 
@@ -70,7 +132,14 @@ The timer resets if a new work is schedule to that worker.
 
 > **Important:** If the value is set to `0` the Worker stays alive until the shutdown method is called.
 
-### schedule(job, data?)
+#### settings.useMainThread
+**Optional**<br>
+Type: `boolean | undefined`<br>
+Default: `undefined`
+
+Use the main thread if no worker is available.
+
+### schedule(job, data?, transferList?)
 
 Add a job to the execution queue
 
@@ -78,14 +147,38 @@ Add a job to the execution queue
 **Required**<br>
 Type: `Function`<br>
 
-The function(Job) that must be executed in one of the threads.
+The `function` that must be executed in one of the threads.
 
 #### data
 **Optional**<br>
-Type: `any`<br>
+Type: `SerializableValue | undefined`<br>
 Default: `undefined`
 
 The data that will be sent to the Job.
+
+#### transferList
+**Optional**<br>
+Type: `Transferable[] | undefined`<br>
+Default: `undefined`
+
+A list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
+
+### schedule(job, dependencies?)
+
+Add a job to the execution queue
+
+#### job
+**Required**<br>
+Type: `Job<T>`<br>
+
+The `Job<T>` that must be executed in one of the threads. Read more on Advanced Usage.
+
+#### dependencies
+**Optional**<br>
+Type: `JobHandle[] | undefined`<br>
+Default: `undefined`
+
+A list of depedencies, use it to ensure that a job executes after all the dependencies has completed execution.
 
 ### complete()
 
@@ -103,5 +196,34 @@ Type: `boolean`<br>
 
 Wait all jobs to complete before shutdown.
 
-## Notes
+## Job<T>
+
+Implement this abstract class to create your scoped jobs.
+
+### execute()
+**Required**<br>
+Type: `Function`<br>
+
+The execute `function` will be called from one of the threads.
+
+### data
+**Required**<br>
+Type: `SerializableValue`
+
+The data that will be used in the Job.
+
+## JobHandle<T>
+
+JobHandle.
+
+### JobHandle.complete()
+
+Returns a Promise that resolves when the job completes.
+
+### JobHandle.isCompleted
+
+Returns the current job status.
+
+# Notes
+
 Documentation will be updated over time.

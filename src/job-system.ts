@@ -10,6 +10,7 @@ export interface JobSystemSetting {
     maxWorkers?: number;
     minWorkers?: number;
     idleTimeout?: number;
+    useMainThread?: boolean;
 }
 
 class JobWorker {
@@ -36,9 +37,10 @@ class JobHandle<T> {
     #isCompleted: boolean = false;
 
     constructor(job: Promise<T>) {
-        this.#job = job.finally(() => {
-            this.#isCompleted = true;
-        });
+        this.#job = job
+            .finally(() => {
+                this.#isCompleted = true;
+            });
     }
 
     public async complete() {
@@ -59,11 +61,13 @@ export class JobSystem {
     #poolSettings: JobSystemSetting = {
         maxWorkers: Math.max(1, cpuSize >= 6 ? (cpuSize / 2) : cpuSize - 1),
         minWorkers: 0,
-        idleTimeout: 0
+        idleTimeout: 0,
+        useMainThread: false
     };
     #poolCount: number = 0;
     #active: number = 0;
-    #isShutdown: boolean = false;
+    #isTerminated: boolean = false;
+    #mainThreadActive: number = 0;
 
     /**
     * @param settings Job System Settings.
@@ -76,6 +80,9 @@ export class JobSystem {
 
         if (typeof this.#poolSettings.idleTimeout !== "number")
             throw new Error('idleTimeout must be a number!');
+
+        if (typeof this.#poolSettings.useMainThread !== "boolean")
+            throw new Error('runOnMainThread must be a boolean!');
 
         if (this.#poolSettings.maxWorkers <= 0)
             throw new Error('maxWorkers must be at least 1!');
@@ -98,7 +105,6 @@ export class JobSystem {
         job: () => T | Promise<T>
     ): Promise<T>;
 
-    // TODO: Add dependsOn to the schedule.
     /**
      * @param job The job to run.
      * 
@@ -106,6 +112,17 @@ export class JobSystem {
      */
     schedule<T = any>(
         job: NoExtraProperties<Job<T>>
+    ): JobHandle<T>;
+
+    /**
+     * @param job The job to run.
+     * @param dependencies A list of depedencies, use it to ensure that a job executes after all the dependencies has completed execution.
+     * 
+     * @returns Job result
+     */
+    schedule<T = any>(
+        job: NoExtraProperties<Job<T>>,
+        dependencies: JobHandle<any>[]
     ): JobHandle<T>;
 
     /**
@@ -134,32 +151,70 @@ export class JobSystem {
 
     public schedule<T = any, D extends SerializableValue = any>(
         job: ((data?: D) => T | Promise<T>) | NoExtraProperties<Job<T>>,
-        data?: D,
+        data?: D | JobHandle<any>[],
         transferList?: Transferable[]
     ) {
-        if (this.#isShutdown)
+        const isUsingJob = job instanceof Job;
+
+        if (this.#isTerminated)
             throw new Error("This Job System is shutdown!");
 
-        let execString;
-        if (job instanceof Job) {
-            const fn = job.execute.toString();
-            execString = `async () => await ((function () ${fn.slice(fn.indexOf("{"), fn.lastIndexOf("}") + 1)}).apply({data:${JSON.stringify(job.data)}}));`;
+        if (typeof job !== "function" && !isUsingJob)
+            throw new Error("Job parameter must be a function or a Job Instance");
+
+        let handler: string;
+        if (isUsingJob) {
+            let fn = job.execute.toString();
+            fn = `function () ${fn.slice(fn.indexOf("{"), fn.lastIndexOf("}") + 1)}`;
+
+            const dt = { data: job.data };
+            handler = `async () => await ((${fn}).apply(${JSON.stringify(dt)}));`;
         } else {
-            execString = `async () => await (${job.toString()})(${JSON.stringify(data)});`;
+            let fn = job.toString();
+            handler = `async () => await (${fn})(${data ? JSON.stringify(data) : ''});`;
         }
 
-        const worker = this.#selectWorker();
-        const uid = worker.getUid();
-        worker.active++;
-        this.#active++;
+        const promises = (isUsingJob && Array.isArray(data)) ? data.map(async x => {
+            if (x instanceof JobHandle)
+                return x.complete();
 
-        worker.instance.postMessage({
-            uid: uid,
-            handler: execString
-        }, (job instanceof Job) ? job.transfer : transferList);
+            return;
+        }) : undefined;
 
-        const result = once(this.#eventStream, `uid-${uid}`)
-            .then(([res]) => {
+        const dependency = (promises ? Promise.all(promises) : Promise.resolve());
+        const result = dependency
+            .then<T>(async () => {
+                const worker = this.#selectWorker();
+                this.#active++;
+
+                if (!worker) {
+                    this.#mainThreadActive++;
+                    try {
+                        const data = await eval(handler)();
+                        return data as T;
+                    } catch (err: any) {
+                        throw err;
+                    } finally {
+                        this.#active--;
+                        this.#mainThreadActive--;
+
+                        if (this.#active === 0) {
+                            this.#eventStream.emit('empty');
+                        }
+                    }
+                }
+
+                const uid = worker.getUid();
+
+                worker.active++;
+
+                worker.instance.postMessage({
+                    uid,
+                    handler
+                }, (job instanceof Job) ? job.transfer : transferList);
+
+                const [res] = await once(this.#eventStream, `uid-${uid}`);
+
                 worker.active--;
                 this.#active--;
 
@@ -175,9 +230,7 @@ export class JobSystem {
                     }, this.#poolSettings.idleTimeout!);
                 }
 
-                if (this.#active === 0) {
-                    this.#eventStream.emit('empty');
-                }
+                this.#checkCompletion();
 
                 if (res.error)
                     throw res.error;
@@ -185,35 +238,48 @@ export class JobSystem {
                 return res.data as T;
             });
 
-        return (job instanceof Job) ? new JobHandle<T>(result) : result;
+
+        return isUsingJob ? new JobHandle<T>(result) : result;
+    }
+
+    async #checkCompletion() {
+        if (this.#active === 0)
+            this.#eventStream.emit('empty');
     }
 
     /**
      * Wait for all jobs to complete.
      */
-    public async complete() {
-        if (this.#active === 0)
-            return;
+    public async complete(): Promise<void> {
+        if (this.#active > 0)
+            await once(this.#eventStream, 'empty');
 
-        return once(this.#eventStream, 'empty');
+        return;
     }
 
     /**
      * Shutdown the Job System.
      */
     public async shutdown(waitForComplete?: boolean) {
-        const isShutdown = this.#isShutdown;
-        this.#isShutdown = true;
+        const isTerminated = this.#isTerminated;
+        this.#isTerminated = true;
 
-        if (waitForComplete)
+        // Hack for complete.
+        if (waitForComplete) {
             await this.complete();
+            await this.complete();
+        }
 
-        if (isShutdown)
+        if (isTerminated)
             return;
 
-        await Promise.all(this.#pool.map(async ({ instance }) => {
-            return instance.terminate();
-        })).then(() => { });
+        await Promise.all(
+            this.#pool.map(async ({ instance }) => {
+                return instance.terminate();
+            })
+        );
+
+        return;
     };
 
     // TODO: make it compatible with esmodules.
@@ -238,10 +304,11 @@ export class JobSystem {
             return inactive;
         }
 
-        if (!inactive && this.#pool.length < this.#poolSettings.maxWorkers!) {
+        if (this.#pool.length < this.#poolSettings.maxWorkers!) {
             return this.#spawnWorker();
         }
 
-        return this.#pool.sort((a, b) => (a.active - b.active))[0];
+        const worker = this.#pool.sort((a, b) => (a.active - b.active))[0];
+        return (this.#poolSettings.useMainThread && worker.active > this.#mainThreadActive) ? null : worker;
     }
 }

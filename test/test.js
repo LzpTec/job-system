@@ -6,7 +6,8 @@ test('schedule function', async t => {
     const jobSystem = new JobSystem();
     const job = ({ a, b }) => a * b;
 
-    await jobSystem.schedule(job, { a: 3, b: 20 })
+    await jobSystem
+        .schedule(job, { a: 3, b: 20 })
         .then(result => {
             t.deepEqual(result, 60);
             t.pass();
@@ -27,7 +28,8 @@ test('schedule job', async t => {
     }
     const job = new MathJob();
 
-    await jobSystem.schedule(job)
+    await jobSystem
+        .schedule(job)
         .complete()
         .then(result => {
             t.deepEqual(result, 60);
@@ -39,26 +41,12 @@ test('schedule job', async t => {
     jobSystem.shutdown();
 });
 
-test('shutdown(wait)', async t => {
-    const jobSystem = new JobSystem();
-    const job = ({ a, b }) => a * b;
-
-    jobSystem.schedule(job, { a: 3, b: 20 })
-        .then(result => {
-            t.deepEqual(result, 60);
-            t.pass();
-        }).catch(err => {
-            t.fail(err);
-        });
-
-    await jobSystem.shutdown(true);
-});
-
 test('error', async t => {
     const jobSystem = new JobSystem();
     const job = () => { throw new Error("Fail"); };
 
-    await jobSystem.schedule(job)
+    await jobSystem
+        .schedule(job)
         .then(() => {
             t.fail('Catch should be called instead!');
         }).catch(err => {
@@ -67,4 +55,20 @@ test('error', async t => {
         });
 
     jobSystem.shutdown();
+});
+
+test('shutdown(wait)', async t => {
+    const jobSystem = new JobSystem();
+    const jobSchedule = jobSystem
+        .schedule(({ a, b }) => a * b, { a: 3, b: 20 });
+
+    jobSchedule
+        .then(async result => {
+            t.deepEqual(result, 60);
+            t.pass();
+        }).catch(err => {
+            t.fail(err);
+        });
+
+    await jobSystem.shutdown(true);
 });
