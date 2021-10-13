@@ -162,17 +162,6 @@ export class JobSystem {
         if (typeof job !== "function" && !isUsingJob)
             throw new Error("Job parameter must be a function or a Job Instance");
 
-        let handler: string;
-        if (isUsingJob) {
-            let fn = job.execute.toString();
-            fn = `function () ${fn.slice(fn.indexOf("{"), fn.lastIndexOf("}") + 1)}`;
-
-            handler = `(async data => await (${fn}).apply(data))`;
-        } else {
-            let fn = job.toString();
-            handler = `(${fn})`;
-        }
-
         const promises = (isUsingJob && Array.isArray(data)) ? data.map(async x => {
             if (x instanceof JobHandle)
                 return x.complete();
@@ -184,58 +173,12 @@ export class JobSystem {
         const result = dependency
             .then<T>(async () => {
                 const worker = this.#selectWorker();
-                this.#active++;
 
-                if (!worker) {
-                    this.#mainThreadActive++;
-                    try {
-                        const response = await ((job instanceof Job) ? job.execute() : job(data as D));
-                        return response as T;
-                    } catch (err: any) {
-                        throw err;
-                    } finally {
-                        this.#active--;
-                        this.#mainThreadActive--;
-
-                        if (this.#active === 0) {
-                            this.#eventStream.emit('empty');
-                        }
-                    }
-                }
-
-                const uid = worker.getUid();
-
-                worker.active++;
-
-                worker.instance.postMessage({
-                    uid,
-                    handler,
-                    data: (job instanceof Job) ? { data: job.data } : data
-                }, (job instanceof Job) ? job.transfer : transferList);
-
-                const [res] = await once(this.#eventStream, `uid-${uid}`);
-
-                worker.active--;
-                this.#active--;
-
-                if (worker.active === 0 && this.#poolSettings.idleTimeout! > 0) {
-                    worker.timeout = setTimeout(() => {
-                        if (worker.active === 0) {
-                            const idx = this.#pool.indexOf(worker);
-                            this.#pool.splice(idx, 1);
-                            worker.instance.terminate();
-                            return;
-                        }
-                        delete worker.timeout;
-                    }, this.#poolSettings.idleTimeout!);
-                }
-
-                this.#checkCompletion();
-
-                if (res.error)
-                    throw res.error;
-
-                return res.response as T;
+                return (!worker)
+                    ? this.#runOnMainThread(job, data as D)
+                        .finally(() => this.#checkCompletion())
+                    : this.#runOnWorker(worker, job, data, transferList)
+                        .finally(() => this.#checkCompletion());
             });
 
 
@@ -281,6 +224,79 @@ export class JobSystem {
 
         return;
     };
+
+    async #runOnMainThread<T = any, D = any>(
+        job: ((data?: D) => T | Promise<T>) | NoExtraProperties<Job<T>>,
+        data?: D
+    ) {
+        this.#active++;
+        this.#mainThreadActive++;
+        try {
+            const response = await ((job instanceof Job) ? job.execute() : job(data));
+            return response as T;
+        } catch (err) {
+            throw err;
+        } finally {
+            this.#active--;
+            this.#mainThreadActive--;
+        }
+    }
+
+    async #runOnWorker<T = any, D = any>(
+        worker: JobWorker,
+        job: ((data?: D) => T | Promise<T>) | NoExtraProperties<Job<T>>,
+        data?: D | JobHandle<any>[],
+        transferList?: Transferable[]
+    ) {
+        const isUsingJob = job instanceof Job;
+        const uid = worker.getUid();
+
+        let handler: string;
+        if (isUsingJob) {
+            let fn = job.execute.toString();
+            fn = `function () ${fn.slice(fn.indexOf("{"), fn.lastIndexOf("}") + 1)}`;
+            handler = `(async data => await (${fn}).apply(data))`;
+        } else {
+            handler = `(${job.toString()})`;
+        }
+
+        this.#active++;
+        worker.active++;
+        try {
+            worker.instance.postMessage({
+                uid,
+                handler,
+                data: isUsingJob ? { data: job.data } : data
+            }, isUsingJob ? job.transfer : transferList);
+
+            const [res] = await once(this.#eventStream, `uid-${uid}`);
+
+            if (res.error)
+                throw res.error;
+
+            return res.response as T;
+        } catch (err) {
+            throw err;
+        } finally {
+            this.#active--;
+            worker.active--;
+            this.#checkWorker(worker);
+        }
+    }
+
+    #checkWorker(worker: JobWorker) {
+        if (worker.active === 0 && this.#poolSettings.idleTimeout! > 0) {
+            worker.timeout = setTimeout(() => {
+                if (worker.active === 0) {
+                    const idx = this.#pool.indexOf(worker);
+                    this.#pool.splice(idx, 1);
+                    worker.instance.terminate();
+                    return;
+                }
+                delete worker.timeout;
+            }, this.#poolSettings.idleTimeout!);
+        }
+    }
 
     // TODO: make it compatible with esmodules.
     #spawnWorker() {
