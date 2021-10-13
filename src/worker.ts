@@ -5,14 +5,14 @@ function worker() {
         return process.exit(-1);
 
     parentPort?.on('message', async msg => {
-        const { handler, uid } = msg;
+        const { handler, uid, data } = msg;
 
         try {
-            const data = await eval(handler)();
+            const response = await eval(handler)(data);
 
             parentPort?.postMessage({
                 uid,
-                data
+                response
             });
         } catch (err: any) {
             parentPort?.postMessage({

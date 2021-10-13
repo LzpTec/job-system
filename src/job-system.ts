@@ -167,11 +167,10 @@ export class JobSystem {
             let fn = job.execute.toString();
             fn = `function () ${fn.slice(fn.indexOf("{"), fn.lastIndexOf("}") + 1)}`;
 
-            const dt = { data: job.data };
-            handler = `async () => await ((${fn}).apply(${JSON.stringify(dt)}));`;
+            handler = `(async data => await (${fn}).apply(data))`;
         } else {
             let fn = job.toString();
-            handler = `async () => await (${fn})(${data ? JSON.stringify(data) : ''});`;
+            handler = `(${fn})`;
         }
 
         const promises = (isUsingJob && Array.isArray(data)) ? data.map(async x => {
@@ -190,8 +189,8 @@ export class JobSystem {
                 if (!worker) {
                     this.#mainThreadActive++;
                     try {
-                        const data = await eval(handler)();
-                        return data as T;
+                        const response = await ((job instanceof Job) ? job.execute() : job(data as D));
+                        return response as T;
                     } catch (err: any) {
                         throw err;
                     } finally {
@@ -210,7 +209,8 @@ export class JobSystem {
 
                 worker.instance.postMessage({
                     uid,
-                    handler
+                    handler,
+                    data: (job instanceof Job) ? { data: job.data } : data
                 }, (job instanceof Job) ? job.transfer : transferList);
 
                 const [res] = await once(this.#eventStream, `uid-${uid}`);
@@ -235,7 +235,7 @@ export class JobSystem {
                 if (res.error)
                     throw res.error;
 
-                return res.data as T;
+                return res.response as T;
             });
 
 
