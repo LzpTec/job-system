@@ -36,5 +36,5 @@
     "skip": {
         "commit": true
     },
-    "commitUrlFormat": "https://github.com/LzpTec/job-system/commits/{{hash}}"
+    "commitUrlFormat": "https://github.com/LzpTec/job-system/commit/{{hash}}"
 }
