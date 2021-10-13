@@ -17,11 +17,11 @@
             "section": "Refactor"
         },
         {
-            "type": "chore",
-            "hidden": true
+            "type": "docs",
+            "section": "Docs"
         },
         {
-            "type": "docs",
+            "type": "chore",
             "hidden": true
         },
         {
