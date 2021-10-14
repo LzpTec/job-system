@@ -135,18 +135,18 @@ export class JobSystem {
      * 
      * @param job The job to run.
      * 
-     * @returns Job result
+     * @returns Job Handle.
      */
     schedule<T = any>(
         job: () => T | Promise<T>
-    ): Promise<T>;
+    ): JobHandle<T>;
 
     /**
      * Schedule a job to run.
      * 
      * @param job The job to run.
      * 
-     * @returns Job result
+     * @returns Job Handle.
      */
     schedule<T = any>(
         job: NoExtraProperties<Job<T>>
@@ -158,7 +158,7 @@ export class JobSystem {
      * @param job The job to run.
      * @param dependencies A list of depedencies, use it to ensure that a job executes after all the dependencies has completed execution.
      * 
-     * @returns Job result
+     * @returns Job Handle.
      */
     schedule<T = any>(
         job: NoExtraProperties<Job<T>>,
@@ -171,12 +171,12 @@ export class JobSystem {
      * @param job The job to run.
      * @param data data to worker(Needs to be serializable).
      * 
-     * @returns Job result
+     * @returns Job Handle.
      */
     schedule<T = any, D extends SerializableValue = any>(
         job: (data: D) => T | Promise<T>,
         data: D
-    ): Promise<T>;
+    ): JobHandle<T>;
 
     /**
      * Schedule a job to run.
@@ -185,19 +185,19 @@ export class JobSystem {
      * @param data data to worker(Needs to be serializable).
      * @param transferList list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
      * 
-     * @returns Job result
+     * @returns Job Handle.
      */
     schedule<T = any, D extends SerializableValue = any>(
         job: (data: D) => T | Promise<T>,
         data: D,
         transferList: Transferable[]
-    ): Promise<T>;
+    ): JobHandle<T>;
 
     public schedule<T = any, D extends SerializableValue = any>(
         job: ((data?: D) => T | Promise<T>) | NoExtraProperties<Job<T>>,
         data?: D | JobHandle<any>[],
         transferList?: Transferable[]
-    ) {
+    ): JobHandle<T> {
         const isUsingJob = job instanceof Job;
 
         if (this.#isTerminated)
@@ -225,8 +225,7 @@ export class JobSystem {
                         .finally(() => this.#checkCompletion());
             });
 
-
-        return isUsingJob ? new JobHandle<T>(result) : result;
+        return new JobHandle<T>(result);
     }
 
     async #checkCompletion() {
