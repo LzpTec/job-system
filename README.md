@@ -23,9 +23,13 @@ import { JobSystem } from '@lzptec/job-system';
 const jobSystem = new JobSystem();
 const job = ({ a, b }) => a * b;
 
-const result = await jobSystem.schedule(job, { a: 2, b: 5 });
+// When we schedule a Job the return will be a JobHandle<T>.
+const jobHandle = await jobSystem.schedule(job, { a: 2, b: 5 });
 // OR
-// const result = await jobSystem.schedule(({ a, b }) => a * b, { a: 2, b: 5 });
+// const jobHandle = await jobSystem.schedule(({ a, b }) => a * b, { a: 2, b: 5 });
+
+// If we want to get the result, we need to call complete()
+const result = await jobHandle.complete();
 console.log(result); // 10
 
 // If you dont need the job system anymore.
@@ -58,7 +62,7 @@ class MultiplicationJob extends Job<number>{
 
 const job = new MultiplicationJob({ a: 2, b: 5 });
 
-// When we schedule a Job<T> the return will be a JobHandle<T>.
+// When we schedule a Job the return will be a JobHandle<T>.
 const jobHandle = jobSystem.schedule(job);
 
 // If we want to get the result, we need to call complete()
@@ -141,6 +145,7 @@ Default: `undefined`
 Use the main thread if no worker is available.
 
 ### schedule(job, data?, transferList?)
+Returns: `JobHandle`
 
 Add a job to the execution queue
 
@@ -165,6 +170,7 @@ Default: `undefined`
 A list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
 
 ### schedule(job, dependencies?)
+Returns: `JobHandle`
 
 Add a job to the execution queue
 
