@@ -6,10 +6,30 @@ import { NoExtraProperties } from '.';
 import { Job } from './job';
 import { SerializableValue, Transferable } from './types-utility';
 
+/**
+ * Job System Settings interface.
+ */
 export interface JobSystemSetting {
+    /**
+     * Defines the maximum number of workers the Job System can instantiate.
+     */
     maxWorkers?: number;
+
+    /**
+     * Defines the minimum number of workers the Job System will instantiate on startup.
+     */
     minWorkers?: number;
+
+    /**
+     * Defines the maximum idle time of a worker inside the pool, after this time the worker will be terminated.
+     * 
+     * The timer resets if a new work is schedule to that worker.
+     */
     idleTimeout?: number;
+
+    /**
+     * Use the main thread if no worker is available.
+     */
     useMainThread?: boolean;
 }
 
@@ -55,6 +75,9 @@ class JobHandle<T> {
 
 const cpuSize = os.cpus().length;
 
+/**
+ * Job System main class.
+ */
 export class JobSystem {
     #eventStream = new EventEmitter();
     #pool: JobWorker[] = [];
@@ -70,8 +93,10 @@ export class JobSystem {
     #mainThreadActive: number = 0;
 
     /**
-    * @param settings Job System Settings.
-    */
+     * Create a new Job System.
+     * 
+     * @param settings Job System Settings.
+     */
     constructor(settings?: JobSystemSetting) {
         Object.assign(this.#poolSettings, settings);
 
@@ -97,6 +122,8 @@ export class JobSystem {
     }
 
     /**
+     * Schedule a job to run.
+     * 
      * @param job The job to run.
      * 
      * @returns Job result
@@ -106,6 +133,8 @@ export class JobSystem {
     ): Promise<T>;
 
     /**
+     * Schedule a job to run.
+     * 
      * @param job The job to run.
      * 
      * @returns Job result
@@ -115,6 +144,8 @@ export class JobSystem {
     ): JobHandle<T>;
 
     /**
+     * Schedule a job to run.
+     * 
      * @param job The job to run.
      * @param dependencies A list of depedencies, use it to ensure that a job executes after all the dependencies has completed execution.
      * 
@@ -126,6 +157,8 @@ export class JobSystem {
     ): JobHandle<T>;
 
     /**
+     * Schedule a job to run.
+     * 
      * @param job The job to run.
      * @param data data to worker(Needs to be serializable).
      * 
@@ -137,6 +170,8 @@ export class JobSystem {
     ): Promise<T>;
 
     /**
+     * Schedule a job to run.
+     * 
      * @param job The job to run.
      * @param data data to worker(Needs to be serializable).
      * @param transferList list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
@@ -192,6 +227,8 @@ export class JobSystem {
 
     /**
      * Wait for all jobs to complete.
+     * 
+     * @returns A Promise that resolves when all jobs are completed.
      */
     public async complete(): Promise<void> {
         if (this.#active > 0)
@@ -202,6 +239,8 @@ export class JobSystem {
 
     /**
      * Shutdown the Job System.
+     * 
+     * @param waitForComplete Wait all schedule jobs to complete before shutdown.
      */
     public async shutdown(waitForComplete?: boolean) {
         const isTerminated = this.#isTerminated;
