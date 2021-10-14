@@ -8,6 +8,7 @@ test('schedule function', async t => {
 
     await jobSystem
         .schedule(job, { a: 3, b: 20 })
+        .complete()
         .then(result => {
             t.deepEqual(result, 60);
             t.pass();
@@ -47,6 +48,7 @@ test('error', async t => {
 
     await jobSystem
         .schedule(job)
+        .complete()
         .then(() => {
             t.fail('Catch should be called instead!');
         }).catch(err => {
@@ -63,6 +65,7 @@ test('shutdown(wait)', async t => {
         .schedule(({ a, b }) => a * b, { a: 3, b: 20 });
 
     jobSchedule
+        .complete()
         .then(async result => {
             t.deepEqual(result, 60);
             t.pass();
