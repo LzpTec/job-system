@@ -52,6 +52,9 @@ class JobWorker {
     }
 }
 
+/**
+ * Job Handle.
+ */
 class JobHandle<T> {
     readonly #job: Promise<T>;
     #isCompleted: boolean = false;
@@ -63,14 +66,20 @@ class JobHandle<T> {
             });
     }
 
+    /**
+     * Wait the job to complete
+     * @returns A Promise that resolves when the job is completed.
+     */
     public async complete() {
         return this.#job;
     }
 
+    /**
+     * Return the current job state.
+     */
     public get isCompleted() {
         return this.#isCompleted;
     }
-
 }
 
 const cpuSize = os.cpus().length;
