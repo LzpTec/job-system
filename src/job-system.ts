@@ -2,7 +2,6 @@ import { EventEmitter, once } from 'events';
 import os from 'os';
 import * as path from 'path';
 import { Worker } from 'worker_threads';
-import { NoExtraProperties } from '.';
 import { Job } from './job';
 import { SerializableValue, Transferable } from './types-utility';
 
@@ -149,7 +148,7 @@ export class JobSystem {
      * @returns Job Handle.
      */
     schedule<T = any>(
-        job: NoExtraProperties<Job<T>>
+        job: Job<T>
     ): JobHandle<T>;
 
     /**
@@ -161,7 +160,7 @@ export class JobSystem {
      * @returns Job Handle.
      */
     schedule<T = any>(
-        job: NoExtraProperties<Job<T>>,
+        job: Job<T>,
         dependencies: JobHandle<any>[]
     ): JobHandle<T>;
 
@@ -194,7 +193,7 @@ export class JobSystem {
     ): JobHandle<T>;
 
     public schedule<T = any, D extends SerializableValue = any>(
-        job: ((data?: D) => T | Promise<T>) | NoExtraProperties<Job<T>>,
+        job: ((data?: D) => T | Promise<T>) | Job<T>,
         data?: D | JobHandle<any>[],
         transferList?: Transferable[]
     ): JobHandle<T> {
@@ -273,7 +272,7 @@ export class JobSystem {
     };
 
     async #runOnMainThread<T = any, D = any>(
-        job: ((data?: D) => T | Promise<T>) | NoExtraProperties<Job<T>>,
+        job: ((data?: D) => T | Promise<T>) | Job<T>,
         data?: D
     ) {
         this.#active++;
@@ -291,7 +290,7 @@ export class JobSystem {
 
     async #runOnWorker<T = any, D = any>(
         worker: JobWorker,
-        job: ((data?: D) => T | Promise<T>) | NoExtraProperties<Job<T>>,
+        job: ((data?: D) => T | Promise<T>) | Job<T>,
         data?: D | JobHandle<any>[],
         transferList?: Transferable[]
     ) {
