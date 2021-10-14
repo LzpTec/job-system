@@ -6,8 +6,8 @@ export type SerializableValue =
     | number
     | boolean
     | null
-    | ArrayBuffer
-    | SharedArrayBuffer
+    | Buffer
+    | ArrayBufferLike
     | MessagePort
     | Date
     | RegExp
@@ -16,7 +16,7 @@ export type SerializableValue =
     | SerializableValue[]
     | { [key: string]: SerializableValue };
 
-export type Transferable = (ArrayBuffer | MessagePort);
+export type Transferable = (ArrayBufferLike | MessagePort);
 
 // https://stackoverflow.com/a/61076348
 type Impossible<K extends keyof any> = {
