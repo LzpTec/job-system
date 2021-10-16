@@ -47,7 +47,7 @@ class JobWorker {
 
     public getUid() {
         this.#jobCount++;
-        return `${this.#id}-${this.#jobCount.toString(16)}`;
+        return `${this.#id}-${this.#jobCount.toString(36)}`;
     }
 }
 
