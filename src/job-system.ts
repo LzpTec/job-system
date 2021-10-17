@@ -1,9 +1,19 @@
 import { EventEmitter, once } from 'events';
 import os from 'os';
 import * as path from 'path';
+import type TypedEmitter from 'typed-emitter';
 import { Worker } from 'worker_threads';
 import { Job } from './job';
+import { JobState } from './job-state';
 import { SerializableValue, Transferable } from './types-utility';
+
+// TODO: Add .on method to the JobHandle<T>
+// TODO: Add .off method to the JobHandle<T>
+// TODO: Separate ThreadPool from JobSystem, this will allow diferent Pools(Fixed, Dynamic).
+// TODO: Add ChangeSettings method to JobSystem.
+// TODO: Move Worker and ThreadPool to another file.
+
+const jobStateChange = Symbol('jobStateChange');
 
 /**
  * Job System Settings interface.
@@ -51,18 +61,63 @@ class JobWorker {
     }
 }
 
+class Deferred<T>{
+    #resolve!: (value: T) => void;
+    #reject!: (reason?: any) => void;
+    #promise: Promise<T>;
+
+    constructor() {
+        this.#promise = new Promise<T>((resolve, reject) => {
+            this.#resolve = resolve;
+            this.#reject = reject;
+        });
+    }
+
+    resolve(value: T) {
+        return this.#resolve(value);
+    }
+
+    reject(reason?: any) {
+        return this.#reject(reason);
+    }
+
+    toPromise() {
+        return new Promise<T>((resolve, reject) => this.#promise.then(resolve).catch(reject));
+    }
+}
+
+interface InternalJobEvents {
+    [jobStateChange]: (state: JobState, data?: any) => void
+}
+
 /**
  * Job Handle.
  */
-class JobHandle<T> {
-    readonly #job: Promise<T>;
-    #isCompleted: boolean = false;
+export class JobHandle<T> {
+    #state: JobState = JobState.PENDING;
 
-    constructor(job: Promise<T>) {
-        this.#job = job
-            .finally(() => {
-                this.#isCompleted = true;
-            });
+    readonly #stream: TypedEmitter<InternalJobEvents>;
+    readonly #complete: Deferred<T> = new Deferred();
+
+    #result?: T;
+    #error?: any;
+
+    constructor(stream: EventEmitter) {
+        this.#stream = stream;
+        this.#stream.on(jobStateChange, this.#updateState.bind(this));
+    }
+
+    #updateState(state: JobState, data: any) {
+        this.#state = state;
+        if (this.#state === JobState.SUCCEEDED) {
+            this.#result = data;
+            this.#complete.resolve(data);
+        }
+
+        if (this.#state === JobState.FAILED) {
+            this.#error = data;
+            this.#complete.reject(data);
+        }
     }
 
     /**
@@ -70,14 +125,26 @@ class JobHandle<T> {
      * @returns A Promise that resolves when the job is completed.
      */
     public async complete() {
-        return this.#job;
+        return this.#complete.toPromise();
     }
 
     /**
-     * Return the current job state.
+     * Job State.
+     * 
+     * @returns the current job state.
+     */
+    public get state() {
+        return this.#state;
+    }
+
+    /**
+     * Is Completed.
+     * 
+     * @returns true if the job is completed.
+     * @deprecated Use .state instead.
      */
     public get isCompleted() {
-        return this.#isCompleted;
+        return this.#state === JobState.SUCCEEDED || this.#state === JobState.FAILED;
     }
 }
 
@@ -213,18 +280,27 @@ export class JobSystem {
         }) : undefined;
 
         const dependency = (promises ? Promise.all(promises) : Promise.resolve());
-        const result = dependency
-            .then<T>(async () => {
+
+        const stream = new EventEmitter() as TypedEmitter<InternalJobEvents>;
+
+        dependency
+            .then(() => {
                 const worker = this.#selectWorker();
 
-                return (!worker)
-                    ? this.#runOnMainThread(job, data as D)
-                        .finally(() => this.#checkCompletion())
-                    : this.#runOnWorker(worker, job, data, transferList)
+                if (!worker) {
+                    this.#runOnMainThread(stream, job, data as D)
                         .finally(() => this.#checkCompletion());
+                    return;
+                }
+
+                this.#runOnWorker(stream, worker, job, data, transferList)
+                    .finally(() => {
+                        this.#checkWorker(worker);
+                        this.#checkCompletion();
+                    });
             });
 
-        return new JobHandle<T>(result);
+        return new JobHandle<T>(stream);
     }
 
     async #checkCompletion() {
@@ -272,16 +348,18 @@ export class JobSystem {
     };
 
     async #runOnMainThread<T = any, D = any>(
+        stream: TypedEmitter<InternalJobEvents>,
         job: ((data?: D) => T | Promise<T>) | Job<T>,
         data?: D
     ) {
         this.#active++;
         this.#mainThreadActive++;
         try {
-            const response = await ((job instanceof Job) ? job.execute() : job(data));
-            return response as T;
+            const response = ((job instanceof Job) ? job.execute() : job(data));
+            stream.emit(jobStateChange, JobState.RUNNING);
+            stream.emit(jobStateChange, JobState.RUNNING, (await response) as T);
         } catch (err) {
-            throw err;
+            stream.emit(jobStateChange, JobState.FAILED, err);
         } finally {
             this.#active--;
             this.#mainThreadActive--;
@@ -289,10 +367,11 @@ export class JobSystem {
     }
 
     async #runOnWorker<T = any, D = any>(
+        stream: TypedEmitter<InternalJobEvents>,
         worker: JobWorker,
         job: ((data?: D) => T | Promise<T>) | Job<T>,
         data?: D | JobHandle<any>[],
-        transferList?: Transferable[]
+        transferList?: Transferable[],
     ) {
         const isUsingJob = job instanceof Job;
         const uid = worker.getUid();
@@ -315,18 +394,18 @@ export class JobSystem {
                 data: isUsingJob ? { data: job.data } : data
             }, isUsingJob ? job.transfer : transferList);
 
-            const [res] = await once(this.#eventStream, `uid-${uid}`);
+            stream.emit(jobStateChange, JobState.RUNNING);
 
+            const [res] = await once(this.#eventStream, `uid-${uid}`);
             if (res.error)
                 throw res.error;
 
-            return res.response as T;
+            return stream.emit(jobStateChange, JobState.SUCCEEDED, res.response as T);
         } catch (err) {
-            throw err;
+            stream.emit(jobStateChange, JobState.FAILED, err);
         } finally {
             this.#active--;
             worker.active--;
-            this.#checkWorker(worker);
         }
     }
 
