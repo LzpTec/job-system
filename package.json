@@ -1,6 +1,6 @@
 {
   "name": "@lzptec/job-system",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "LzpTec",
   "license": "MIT",
   "description": "A Job System for node",
