@@ -3,10 +3,10 @@ import os from 'os';
 import * as path from 'path';
 import type TypedEmitter from 'typed-emitter';
 import { Worker } from 'worker_threads';
-import { jobStateChange } from './constants';
+import { JobEvents, jobStateChange } from './constants';
 import { Job } from './job';
+import { JobHandle } from './job-handle';
 import { JobState } from './job-state';
-import { Deferred } from './utils/deferred';
 import { SerializableValue, Transferable } from './utils/types-utility';
 
 // TODO: Add .on method to the JobHandle<T>
@@ -58,68 +58,6 @@ class JobWorker {
     public getUid() {
         this.#jobCount++;
         return `${this.#id}-${this.#jobCount.toString(36)}`;
-    }
-}
-
-interface InternalJobEvents {
-    [jobStateChange]: (state: JobState, data?: any) => void
-}
-
-/**
- * Job Handle.
- */
-export class JobHandle<T> {
-    #state: JobState = JobState.PENDING;
-
-    readonly #stream: TypedEmitter<InternalJobEvents>;
-    readonly #complete: Deferred<T> = new Deferred();
-
-    #result?: T;
-    #error?: any;
-
-    constructor(stream: EventEmitter) {
-        this.#stream = stream;
-        this.#stream.on(jobStateChange, this.#updateState.bind(this));
-    }
-
-    #updateState(state: JobState, data: any) {
-        this.#state = state;
-        if (this.#state === JobState.SUCCEEDED) {
-            this.#result = data;
-            this.#complete.resolve(data);
-        }
-
-        if (this.#state === JobState.FAILED) {
-            this.#error = data;
-            this.#complete.reject(data);
-        }
-    }
-
-    /**
-     * Wait the job to complete
-     * @returns A Promise that resolves when the job is completed.
-     */
-    public async complete() {
-        return this.#complete.toPromise();
-    }
-
-    /**
-     * Job State.
-     * 
-     * @returns the current job state.
-     */
-    public get state() {
-        return this.#state;
-    }
-
-    /**
-     * Is Completed.
-     * 
-     * @returns true if the job is completed.
-     * @deprecated Use .state instead.
-     */
-    public get isCompleted() {
-        return this.#state === JobState.SUCCEEDED || this.#state === JobState.FAILED;
     }
 }
 
@@ -256,7 +194,7 @@ export class JobSystem {
 
         const dependency = (promises ? Promise.all(promises) : Promise.resolve());
 
-        const stream = new EventEmitter() as TypedEmitter<InternalJobEvents>;
+        const stream = new EventEmitter() as TypedEmitter<JobEvents>;
 
         dependency
             .then(() => {
@@ -323,7 +261,7 @@ export class JobSystem {
     };
 
     async #runOnMainThread<T = any, D = any>(
-        stream: TypedEmitter<InternalJobEvents>,
+        stream: TypedEmitter<JobEvents>,
         job: ((data?: D) => T | Promise<T>) | Job<T>,
         data?: D
     ) {
@@ -342,7 +280,7 @@ export class JobSystem {
     }
 
     async #runOnWorker<T = any, D = any>(
-        stream: TypedEmitter<InternalJobEvents>,
+        stream: TypedEmitter<JobEvents>,
         worker: JobWorker,
         job: ((data?: D) => T | Promise<T>) | Job<T>,
         data?: D | JobHandle<any>[],
