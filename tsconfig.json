@@ -1,9 +1,8 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "outDir": "./",
+    "outFile": "./dist/index.d.ts",
     "rootDir": "./src",
-    "module": "CommonJS",
     "target": "ES2019",
     "moduleResolution": "node",
     "strict": true,
