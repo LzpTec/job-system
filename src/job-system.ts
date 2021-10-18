@@ -3,6 +3,7 @@ import os from 'os';
 import * as path from 'path';
 import type TypedEmitter from 'typed-emitter';
 import { Worker } from 'worker_threads';
+import { jobStateChange } from './constants';
 import { Job } from './job';
 import { JobState } from './job-state';
 import { Deferred } from './utils/deferred';
@@ -13,8 +14,6 @@ import { SerializableValue, Transferable } from './utils/types-utility';
 // TODO: Separate ThreadPool from JobSystem, this will allow diferent Pools(Fixed, Dynamic).
 // TODO: Add ChangeSettings method to JobSystem.
 // TODO: Move Worker and ThreadPool to another file.
-
-const jobStateChange = Symbol('jobStateChange');
 
 /**
  * Job System Settings interface.
