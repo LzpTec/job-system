@@ -11,7 +11,7 @@
     "test": "pnpm run prepare && ava test/test.js",
     "ts-types": "tsc --emitDeclarationOnly",
     "build": "pnpm run build:cjs & pnpm run ts-types",
-    "build:cjs": "esbuild src/index.ts src/worker.ts --target=es2019 --bundle --sourcemap --platform=node --outdir=dist --format=cjs --out-extension:.js=.js",
+    "build:cjs": "esbuild src/*.ts src/**/*.ts --target=es2019 --sourcemap --platform=node --outdir=dist --format=cjs --out-extension:.js=.js",
     "release": "standard-version",
     "release:minor": "standard-version --release-as minor",
     "release:patch": "standard-version --release-as patch",
