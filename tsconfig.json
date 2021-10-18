@@ -1,7 +1,7 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "outDir": "dist",
+    "outDir": "./",
     "rootDir": "./src",
     "module": "CommonJS",
     "target": "ES2019",

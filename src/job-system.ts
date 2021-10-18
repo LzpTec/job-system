@@ -6,6 +6,7 @@ import { Worker } from 'worker_threads';
 import { Job } from './job';
 import { JobState } from './job-state';
 import { SerializableValue, Transferable } from './types-utility';
+import { Deferred } from './utils/deferred';
 
 // TODO: Add .on method to the JobHandle<T>
 // TODO: Add .off method to the JobHandle<T>
@@ -58,31 +59,6 @@ class JobWorker {
     public getUid() {
         this.#jobCount++;
         return `${this.#id}-${this.#jobCount.toString(36)}`;
-    }
-}
-
-class Deferred<T>{
-    #resolve!: (value: T) => void;
-    #reject!: (reason?: any) => void;
-    #promise: Promise<T>;
-
-    constructor() {
-        this.#promise = new Promise<T>((resolve, reject) => {
-            this.#resolve = resolve;
-            this.#reject = reject;
-        });
-    }
-
-    resolve(value: T) {
-        return this.#resolve(value);
-    }
-
-    reject(reason?: any) {
-        return this.#reject(reason);
-    }
-
-    toPromise() {
-        return new Promise<T>((resolve, reject) => this.#promise.then(resolve).catch(reject));
     }
 }
 

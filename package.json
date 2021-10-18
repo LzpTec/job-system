@@ -9,7 +9,7 @@
   "scripts": {
     "prepare": "rimraf ./dist && pnpm run build",
     "test": "pnpm run prepare && ava test/test.js",
-    "ts-types": "tsc --emitDeclarationOnly --outDir ./",
+    "ts-types": "tsc --emitDeclarationOnly",
     "build": "pnpm run build:cjs & pnpm run ts-types",
     "build:cjs": "esbuild --target=es2019 --platform=node src/*.ts --outdir=dist --format=cjs --out-extension:.js=.js",
     "release": "standard-version",
