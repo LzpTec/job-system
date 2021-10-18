@@ -5,8 +5,8 @@ import type TypedEmitter from 'typed-emitter';
 import { Worker } from 'worker_threads';
 import { Job } from './job';
 import { JobState } from './job-state';
-import { SerializableValue, Transferable } from './types-utility';
 import { Deferred } from './utils/deferred';
+import { SerializableValue, Transferable } from './utils/types-utility';
 
 // TODO: Add .on method to the JobHandle<T>
 // TODO: Add .off method to the JobHandle<T>

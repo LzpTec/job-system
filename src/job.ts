@@ -1,5 +1,5 @@
 import { Transferable } from '.';
-import { SerializableValue } from './types-utility';
+import { SerializableValue } from './utils/types-utility';
 
 export interface Job<T, D extends SerializableValue = any> {
     transfer?: Transferable[];
