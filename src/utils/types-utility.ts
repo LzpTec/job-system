@@ -9,6 +9,7 @@ export type SerializableValue =
     | Buffer
     | ArrayBufferLike
     | MessagePort
+    | DataView
     | Date
     | RegExp
     | Map<SerializableValue, SerializableValue>

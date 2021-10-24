@@ -9,6 +9,7 @@ import { JobHandle } from './job-handle';
 import { JobState } from './job-state';
 import { SerializableValue, Transferable } from './utils/types-utility';
 
+// TODO: Allow usage of separate worker file.
 // TODO: Separate ThreadPool from JobSystem, this will allow diferent Pools(Fixed, Dynamic).
 // TODO: Add ChangeSettings method to JobSystem.
 // TODO: Move Worker and ThreadPool to another file.
