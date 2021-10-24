@@ -1,6 +1,6 @@
 import { parentPort } from 'worker_threads';
 
-function worker() {
+const worker = () => {
     if (!parentPort)
         return process.exit(-1);
 
