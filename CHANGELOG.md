@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.3.0](https://github.com/LzpTec/job-system/compare/v0.2.0...v0.3.0) (2021-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* Removed unused deferred<T>.
+
+### Features
+
+* Improved SerializableValue type. ([d856001](https://github.com/LzpTec/job-system/commit/d8560016df2fe25b3ba315b248722a7946738d22))
+* Job Handle now extends EventEmitter. ([126a59e](https://github.com/LzpTec/job-system/commit/126a59eb407d609575713c5875c8d69af79a6789))
+* **package:** rename ts-types to build:ts ([05b7fce](https://github.com/LzpTec/job-system/commit/05b7fce206c39ec15190a7df30aa85e415fa4cb3))
+* Removed unused deferred<T>. ([6d99587](https://github.com/LzpTec/job-system/commit/6d995877548cd6b6cde5af3f3d02782bb093749c))
+
 ## [0.2.0](https://github.com/LzpTec/job-system/compare/v0.1.0...v0.2.0) (2021-10-18)
 
 
