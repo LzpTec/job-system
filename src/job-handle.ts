@@ -1,7 +1,8 @@
 import { once } from 'events';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { JobEvents, jobStateChange } from './constants';
+import { jobStateChange } from './constants';
 import { JobState } from './job-state';
+import { JobEvents } from './types/job-events';
 
 /**
  * Job Handle.
@@ -51,15 +52,5 @@ export class JobHandle<T> extends TypedEmitter<JobEvents> {
      */
     public get state() {
         return this.#state;
-    }
-
-    /**
-     * Is Completed.
-     * 
-     * @returns true if the job is completed.
-     * @deprecated Use .state instead.
-     */
-    public get isCompleted() {
-        return this.#state === JobState.SUCCEEDED || this.#state === JobState.FAILED;
     }
 }
