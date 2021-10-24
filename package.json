@@ -9,8 +9,8 @@
   "scripts": {
     "prepare": "rimraf ./dist && pnpm run build",
     "test": "pnpm run prepare && ava test/test.js",
-    "ts-types": "tsc --emitDeclarationOnly",
-    "build": "pnpm run build:cjs & pnpm run ts-types",
+    "build": "pnpm run build:cjs & pnpm run build:ts",
+    "build:ts": "tsc --emitDeclarationOnly",
     "build:cjs": "esbuild src/*.ts src/**/*.ts --target=es2019 --sourcemap --platform=node --outdir=dist --format=cjs --out-extension:.js=.js",
     "release": "standard-version",
     "release:minor": "standard-version --release-as minor",
