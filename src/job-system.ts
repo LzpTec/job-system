@@ -1,7 +1,7 @@
 import { EventEmitter, once } from 'events';
 import os from 'os';
 import * as path from 'path';
-import type TypedEmitter from 'typed-emitter';
+import { TypedEmitter } from 'tiny-typed-emitter';
 import { Worker } from 'worker_threads';
 import { JobEvents, jobStateChange } from './constants';
 import { Job } from './job';
@@ -9,8 +9,6 @@ import { JobHandle } from './job-handle';
 import { JobState } from './job-state';
 import { SerializableValue, Transferable } from './utils/types-utility';
 
-// TODO: Add .on method to the JobHandle<T>
-// TODO: Add .off method to the JobHandle<T>
 // TODO: Separate ThreadPool from JobSystem, this will allow diferent Pools(Fixed, Dynamic).
 // TODO: Add ChangeSettings method to JobSystem.
 // TODO: Move Worker and ThreadPool to another file.
@@ -194,26 +192,26 @@ export class JobSystem {
 
         const dependency = (promises ? Promise.all(promises) : Promise.resolve());
 
-        const stream = new EventEmitter() as TypedEmitter<JobEvents>;
+        const jobHandle = new JobHandle<T>();
 
         dependency
             .then(() => {
                 const worker = this.#selectWorker();
 
                 if (!worker) {
-                    this.#runOnMainThread(stream, job, data as D)
+                    this.#runOnMainThread(jobHandle, job, data as D)
                         .finally(() => this.#checkCompletion());
                     return;
                 }
 
-                this.#runOnWorker(stream, worker, job, data, transferList)
+                this.#runOnWorker(jobHandle, worker, job, data, transferList)
                     .finally(() => {
                         this.#checkWorker(worker);
                         this.#checkCompletion();
                     });
             });
 
-        return new JobHandle<T>(stream);
+        return jobHandle;
     }
 
     async #checkCompletion() {
@@ -261,7 +259,7 @@ export class JobSystem {
     };
 
     async #runOnMainThread<T = any, D = any>(
-        stream: TypedEmitter<JobEvents>,
+        stream: JobHandle<T>,
         job: ((data?: D) => T | Promise<T>) | Job<T>,
         data?: D
     ) {

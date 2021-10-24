@@ -1,36 +1,32 @@
-import EventEmitter from 'events';
-import type TypedEmitter from 'typed-emitter';
+import { once } from 'events';
+import { TypedEmitter } from 'tiny-typed-emitter';
 import { JobEvents, jobStateChange } from './constants';
 import { JobState } from './job-state';
-import { Deferred } from './utils/deferred';
 
 /**
  * Job Handle.
  */
-export class JobHandle<T> {
+export class JobHandle<T> extends TypedEmitter<JobEvents> {
     #state: JobState = JobState.PENDING;
-
-    readonly #stream: TypedEmitter<JobEvents>;
-    readonly #complete: Deferred<T> = new Deferred();
 
     #result?: T;
     #error?: any;
 
-    constructor(stream: EventEmitter) {
-        this.#stream = stream;
-        this.#stream.on(jobStateChange, this.#updateState.bind(this));
+    constructor() {
+        super();
+        this.on(jobStateChange, this.#updateState.bind(this));
     }
 
     #updateState(state: JobState, data: any) {
         this.#state = state;
         if (this.#state === JobState.SUCCEEDED) {
             this.#result = data;
-            this.#complete.resolve(data);
+            this.emit('complete', undefined, data);
         }
 
         if (this.#state === JobState.FAILED) {
             this.#error = data;
-            this.#complete.reject(data);
+            this.emit('complete', data);
         }
     }
 
@@ -39,7 +35,13 @@ export class JobHandle<T> {
      * @returns A Promise that resolves when the job is completed.
      */
     public async complete() {
-        return this.#complete.toPromise();
+        return once(this, 'complete')
+            .then(([err, data]) => {
+                if (err)
+                    throw err;
+
+                return data;
+            });
     }
 
     /**
