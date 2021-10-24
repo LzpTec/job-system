@@ -227,9 +227,9 @@ JobHandle.
 
 Returns a Promise that resolves when the job completes.
 
-### JobHandle.isCompleted
+### JobHandle.state
 
-Returns the current job status.
+Returns the current job state.
 
 # Notes
 

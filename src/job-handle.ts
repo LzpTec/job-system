@@ -23,11 +23,13 @@ export class JobHandle<T> extends TypedEmitter<JobEvents> {
         if (this.#state === JobState.SUCCEEDED) {
             this.#result = data;
             this.emit('complete', undefined, data);
+            this.emit('success', data);
         }
 
         if (this.#state === JobState.FAILED) {
             this.#error = data;
             this.emit('complete', data);
+            this.emit('error', data);
         }
     }
 
