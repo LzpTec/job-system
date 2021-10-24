@@ -219,7 +219,7 @@ Type: `SerializableValue`
 
 The data that will be used in the Job.
 
-## JobHandle<T>
+## JobHandle<T> extends EventEmitter
 
 JobHandle.
 
@@ -230,6 +230,9 @@ Returns a Promise that resolves when the job completes.
 ### JobHandle.state
 
 Returns the current job state.
+
+### Events
+`success` | `error` | `complete`
 
 # Notes
 
