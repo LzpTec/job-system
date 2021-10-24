@@ -16,5 +16,3 @@ export type SerializableValue =
     | Set<SerializableValue>
     | SerializableValue[]
     | { [key: string]: SerializableValue };
-
-export type Transferable = (ArrayBufferLike | MessagePort);

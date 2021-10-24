@@ -3,11 +3,13 @@ import os from 'os';
 import * as path from 'path';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { Worker } from 'worker_threads';
-import { JobEvents, jobStateChange } from './constants';
+import { jobStateChange } from './constants';
 import { Job } from './job';
 import { JobHandle } from './job-handle';
 import { JobState } from './job-state';
-import { SerializableValue, Transferable } from './utils/types-utility';
+import { JobEvents } from './types/job-events';
+import { SerializableValue } from './types/serializable-value';
+import { Transferable } from './types/transferable';
 
 // TODO: Allow usage of separate worker file.
 // TODO: Separate ThreadPool from JobSystem, this will allow diferent Pools(Fixed, Dynamic).
