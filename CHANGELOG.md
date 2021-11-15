@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://github.com/LzpTec/job-system/compare/v0.3.0...v0.4.0) (2021-11-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* Removed isCompleted from JobHandle.
+
+### Features
+
+* Add `success` and `error` events to JobHandle. ([0da010b](https://github.com/LzpTec/job-system/commit/0da010bb82cf503e3aa026b1afbcf6c3ff47dcbb))
+* Removed isCompleted from JobHandle. ([849df09](https://github.com/LzpTec/job-system/commit/849df094d7a6f596290827161ae7b9f9841e670d))
+
+
+### Bug Fixes
+
+* fix job handle complete method. ([e6d019b](https://github.com/LzpTec/job-system/commit/e6d019b98d305972cd7bbd3b3e5e04e390bfbcc6))
+
+
+### Refactor
+
+* Change worker function to const. ([3037325](https://github.com/LzpTec/job-system/commit/3037325c991c118f60166b2ded87f3825c5db6b7))
+* Improve project structure. ([d280472](https://github.com/LzpTec/job-system/commit/d28047253332894c83a11c8e5b73fdd3e18d07d0))
+
+
+### Docs
+
+* Update JobHandle readme. ([39f94c9](https://github.com/LzpTec/job-system/commit/39f94c91e25bcf00787950c66efff0fba2c2a56e))
+
 ## [0.3.0](https://github.com/LzpTec/job-system/compare/v0.2.0...v0.3.0) (2021-10-24)
 
 
