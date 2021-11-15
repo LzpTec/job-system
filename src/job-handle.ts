@@ -15,7 +15,7 @@ export class JobHandle<T> extends TypedEmitter<JobEvents> {
 
     constructor() {
         super();
-        this.on(jobStateChange, this.#updateState.bind(this));
+        this.on(jobStateChange, (state, data) => this.#updateState(state, data));
     }
 
     #updateState(state: JobState, data: any) {
@@ -38,6 +38,12 @@ export class JobHandle<T> extends TypedEmitter<JobEvents> {
      * @returns A Promise that resolves when the job is completed.
      */
     public async complete() {
+        if (this.#result)
+            return this.#result;
+
+        if (this.#error)
+            throw this.#error;
+
         return once(this, 'complete')
             .then(([err, data]) => {
                 if (err)
