@@ -144,7 +144,7 @@ Default: `undefined`
 
 Use the main thread if no worker is available.
 
-### schedule(job, data?, transferList?)
+### schedule(job, data?, dependencies?, transferList?)
 Returns: `JobHandle`
 
 Add a job to the execution queue
@@ -162,30 +162,19 @@ Default: `undefined`
 
 The data that will be sent to the Job.
 
-#### transferList
-**Optional**<br>
-Type: `Transferable[] | undefined`<br>
-Default: `undefined`
-
-A list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
-
-### schedule(job, dependencies?)
-Returns: `JobHandle`
-
-Add a job to the execution queue
-
-#### job
-**Required**<br>
-Type: `Job<T>`<br>
-
-The `Job<T>` that must be executed in one of the threads. Read more on Advanced Usage.
-
 #### dependencies
 **Optional**<br>
 Type: `JobHandle[] | undefined`<br>
 Default: `undefined`
 
 A list of depedencies, use it to ensure that a job executes after all the dependencies has completed execution.
+
+#### transferList
+**Optional**<br>
+Type: `Transferable[] | undefined`<br>
+Default: `undefined`
+
+A list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
 
 ### complete()
 
@@ -203,22 +192,6 @@ Type: `boolean`<br>
 
 Wait all jobs to complete before shutdown.
 
-## Job<T>
-
-Implement this abstract class to create your scoped jobs.
-
-### execute()
-**Required**<br>
-Type: `Function`<br>
-
-The execute `function` will be called from one of the threads.
-
-### data
-**Required**<br>
-Type: `SerializableValue`
-
-The data that will be used in the Job.
-
 ## JobHandle<T> extends EventEmitter
 
 JobHandle.
@@ -232,7 +205,7 @@ Returns a Promise that resolves when the job completes.
 Returns the current job state.
 
 ### Events
-`success` | `error` | `complete`
+`success | error | complete`
 
 # Notes
 

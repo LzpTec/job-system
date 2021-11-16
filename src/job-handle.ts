@@ -9,7 +9,6 @@ import { JobEvents } from './types/job-events';
  */
 export class JobHandle<T> extends TypedEmitter<JobEvents> {
     #state: JobState = JobState.PENDING;
-
     #result?: T;
     #error?: any;
 

@@ -4,7 +4,6 @@ import * as path from 'path';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { Worker } from 'worker_threads';
 import { jobStateChange } from './constants';
-import { Job } from './job';
 import { JobHandle } from './job-handle';
 import { JobState } from './job-state';
 import { JobEvents } from './types/job-events';
@@ -125,30 +124,6 @@ export class JobSystem {
      * Schedule a job to run.
      * 
      * @param job The job to run.
-     * 
-     * @returns Job Handle.
-     */
-    schedule<T = any>(
-        job: Job<T>
-    ): JobHandle<T>;
-
-    /**
-     * Schedule a job to run.
-     * 
-     * @param job The job to run.
-     * @param dependencies A list of depedencies, use it to ensure that a job executes after all the dependencies has completed execution.
-     * 
-     * @returns Job Handle.
-     */
-    schedule<T = any>(
-        job: Job<T>,
-        dependencies: JobHandle<any>[]
-    ): JobHandle<T>;
-
-    /**
-     * Schedule a job to run.
-     * 
-     * @param job The job to run.
      * @param data data to worker(Needs to be serializable).
      * 
      * @returns Job Handle.
@@ -163,30 +138,46 @@ export class JobSystem {
      * 
      * @param job The job to run.
      * @param data data to worker(Needs to be serializable).
-     * @param transferList list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
+     * @param dependencies A list of depedencies, use it to ensure that a job executes after all the dependencies has completed execution.
      * 
      * @returns Job Handle.
      */
     schedule<T = any, D extends SerializableValue = any>(
         job: (data: D) => T | Promise<T>,
         data: D,
+        dependencies: JobHandle<any>[]
+    ): JobHandle<T>;
+
+    /**
+     * Schedule a job to run.
+     * 
+     * @param job The job to run.
+     * @param data data to worker(Needs to be serializable).
+     * @param dependencies A list of depedencies, use it to ensure that a job executes after all the dependencies has completed execution.
+     * @param transferList list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
+     * 
+     * @returns Job Handle.
+     */
+    schedule<T = any, D extends SerializableValue = any, U extends SerializableValue[] = any[]>(
+        job: (data: D) => T | Promise<T>,
+        data: D,
+        dependencies: JobHandle<any>[],
         transferList: Transferable[]
     ): JobHandle<T>;
 
     public schedule<T = any, D extends SerializableValue = any>(
-        job: ((data?: D) => T | Promise<T>) | Job<T>,
-        data?: D | JobHandle<any>[],
+        job: (data?: D) => T | Promise<T>,
+        data?: D,
+        dependencies?: JobHandle<any>[],
         transferList?: Transferable[]
     ): JobHandle<T> {
-        const isUsingJob = job instanceof Job;
-
         if (this.#isTerminated)
             throw new Error("This Job System is shutdown!");
 
-        if (typeof job !== "function" && !isUsingJob)
-            throw new Error("Job parameter must be a function or a Job Instance");
+        if (typeof job !== "function")
+            throw new Error("Job parameter must be a function.");
 
-        const promises = (isUsingJob && Array.isArray(data)) ? data.map(async x => {
+        const promises = Array.isArray(dependencies) ? dependencies.map(async x => {
             if (x instanceof JobHandle)
                 return x.complete();
 
@@ -263,13 +254,13 @@ export class JobSystem {
 
     async #runOnMainThread<T = any, D = any>(
         stream: JobHandle<T>,
-        job: ((data?: D) => T | Promise<T>) | Job<T>,
+        job: (data?: D) => T | Promise<T>,
         data?: D
     ) {
         this.#active++;
         this.#mainThreadActive++;
         try {
-            const response = ((job instanceof Job) ? job.execute() : job(data));
+            const response = job.bind(null)(data);
             stream.emit(jobStateChange, JobState.RUNNING);
             stream.emit(jobStateChange, JobState.RUNNING, (await response) as T);
         } catch (err) {
@@ -283,21 +274,12 @@ export class JobSystem {
     async #runOnWorker<T = any, D = any>(
         stream: TypedEmitter<JobEvents>,
         worker: JobWorker,
-        job: ((data?: D) => T | Promise<T>) | Job<T>,
+        job: (data?: D) => T | Promise<T>,
         data?: D | JobHandle<any>[],
         transferList?: Transferable[],
     ) {
-        const isUsingJob = job instanceof Job;
         const uid = worker.getUid();
-
-        let handler: string;
-        if (isUsingJob) {
-            let fn = job.execute.toString();
-            fn = `function () ${fn.slice(fn.indexOf("{"), fn.lastIndexOf("}") + 1)}`;
-            handler = `(async data => await (${fn}).apply(data))`;
-        } else {
-            handler = `(${job.toString()})`;
-        }
+        const handler = `(${job.toString()})`;
 
         this.#active++;
         worker.active++;
@@ -305,8 +287,8 @@ export class JobSystem {
             worker.instance.postMessage({
                 uid,
                 handler,
-                data: isUsingJob ? { data: job.data } : data
-            }, isUsingJob ? job.transfer : transferList);
+                data: data
+            }, transferList);
 
             stream.emit(jobStateChange, JobState.RUNNING);
 
