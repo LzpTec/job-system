@@ -16,6 +16,8 @@ pnpm i @lzptec/job-system
 # Usage
 The following examples uses typescript
 
+⚠ In 1.0.0 this will change this drastically and will be the first **Stable** Release.
+
 ## Basic
 ```ts
 import { JobSystem } from '@lzptec/job-system';
