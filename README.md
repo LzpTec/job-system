@@ -16,7 +16,7 @@ pnpm i @lzptec/job-system
 # Usage
 The following examples uses typescript
 
-⚠ In 1.0.0 this will change this drastically and will be the first **Stable** Release.
+⚠ Version 1.0.0 will be the first **Stable** Release and the Usage will change drastically.
 
 ## Basic
 ```ts
