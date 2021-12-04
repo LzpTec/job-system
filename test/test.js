@@ -2,10 +2,9 @@ const test = require('ava');
 const JobSystem = require(__dirname + '/../dist/index.js').JobSystem;
 
 test('schedule(data only)', async t => {
-    const jobSystem = new JobSystem();
     const job = ({ a, b }) => a * b;
 
-    await jobSystem
+    await JobSystem
         .schedule(job, { a: 3, b: 20 })
         .complete()
         .then(result => {
@@ -14,15 +13,12 @@ test('schedule(data only)', async t => {
         }).catch(err => {
             t.fail(err);
         });
-
-    jobSystem.shutdown();
 });
 
 test('error', async t => {
-    const jobSystem = new JobSystem();
     const job = () => { throw new Error("Fail"); };
 
-    await jobSystem
+    await JobSystem
         .schedule(job)
         .complete()
         .then(() => {
@@ -30,17 +26,15 @@ test('error', async t => {
         }).catch(err => {
             t.is(err.message, `Fail`);
             t.pass();
+            return;
         });
-
-    jobSystem.shutdown();
 });
 
 test('shutdown(wait)', async t => {
-    const jobSystem = new JobSystem();
-    const jobSchedule = jobSystem
+    const jobSchedule = JobSystem
         .schedule(({ a, b }) => a * b, { a: 3, b: 20 });
 
-    jobSchedule
+    await jobSchedule
         .complete()
         .then(async result => {
             t.deepEqual(result, 60);
@@ -48,6 +42,4 @@ test('shutdown(wait)', async t => {
         }).catch(err => {
             t.fail(err);
         });
-
-    await jobSystem.shutdown(true);
 });
