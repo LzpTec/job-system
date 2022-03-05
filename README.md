@@ -50,8 +50,8 @@ const result = await jobHandle.complete();
 console.log(result); // 10
 
 // We can use the JobHandle<T> as Dependency to another job, this will ensure that a job run only after the dependency job.
-const job1Handle = threadPool.schedule((data) => console.log(`Hello from Job n${this.data}`), 1);
-const job2Handle = threadPool.schedule((data) => console.log(`Hello from Job n${this.data}`), 2, [job1Handle]);
+const job1Handle = threadPool.schedule((data) => console.log(`Hello from Job n${data}`), 1);
+const job2Handle = threadPool.schedule((data) => console.log(`Hello from Job n${data}`), 2, [job1Handle]);
 
 await job2Handle.complete();
 // Console
