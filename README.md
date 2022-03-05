@@ -77,7 +77,7 @@ const cpuSize = os.cpus().length;
 const maxWorkers = Math.max(1, cpuSize >= 6 ? (cpuSize / 2) : cpuSize - 1);
 ```
 
-> **Important:** If a number smaller than 1 is set, an error will occur!
+> **Important:** If a number smaller than `0` is set, an error will occur!
 
 #### settings.minWorkers
 **Optional**<br>
@@ -104,6 +104,21 @@ Type: `boolean`<br>
 Default: `false`
 
 Use the main thread if no worker is available.
+
+### setSettings(settings)
+
+Set new settings on this pool.
+
+#### settings
+**Required**<br>
+Type: `ThreadPoolSettings`<br>
+
+New settings.
+
+### getSettings()
+Return: `ThreadPoolSettings`
+
+Return the current settings of this pool.
 
 ### schedule(job, data?, dependencies?, transferList?)
 Returns: `JobHandle`
@@ -142,12 +157,6 @@ A list of transferable objects like ArrayBuffers to be transferred to the receiv
 Shutdown the Thread Pool, it will wait for all jobs to complete.
 
 > **Important:** If the `schedule` method is called after `shutdown`, an error will occur!
-
-#### waitForComplete
-**Optional**<br>
-Type: `boolean`<br>
-
-Wait all jobs to complete before shutdown.
 
 ## JobHandle<T> extends EventEmitter
 
