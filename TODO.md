@@ -2,11 +2,11 @@
 
 ## 1.0.0
 
+- [x] Separate ThreadPool from JobSystem.
+- [x] Remove JobSystem class.
 - [x] Remove Job Class.
-- [x] Change Job System Class to Static.
-- [ ] Add a **new** way to schedule a job.
-- [ ] Job System - Update Settings.
+- [x] Add a **new** way to schedule a job.
+- [ ] Thread Pool - Update Settings.
 - [ ] Improve Project Struct.
 - [ ] Improve Tests.
-- [x] Separate ThreadPool from JobSystem
 - [ ] Allow specific Jobs.

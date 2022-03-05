@@ -25,7 +25,8 @@ test('error', async t => {
         .complete()
         .then(() => {
             t.fail('Catch should be called instead!');
-        }).catch(err => {
+        })
+        .catch(err => {
             t.is(err.message, `Fail`);
             t.pass();
             return;
@@ -41,7 +42,8 @@ test('shutdown(wait)', async t => {
         .then(async result => {
             t.deepEqual(result, 60);
             t.pass();
-        }).catch(err => {
+        })
+        .catch(err => {
             t.fail(err);
         });
 });

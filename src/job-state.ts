@@ -1,6 +1,6 @@
 export enum JobState {
-    PENDING,
-    RUNNING,
-    SUCCEEDED,
-    FAILED
+    PENDING = 0,
+    RUNNING = 1,
+    SUCCEEDED = 2,
+    FAILED = 4
 }
