@@ -61,17 +61,17 @@ await job2Handle.complete();
 
 # API
 
-## JobSystem(settings?)
+## ThreadPool(settings?)
 
-Returns a new instance of JobSystem!
+Returns a new ThreadPool.
 
 #### settings.maxWorkers
 **Optional**<br>
-Type: `number | undefined`<br>
-Default: `undefined`
+Type: `number`<br>
+Default: `0`
 
 Defines the maximum number of workers the Job System can instantiate.
-If it is `undefined` the number of workers will be automatically defined using the following logic:
+If it is `0` the number of workers will be automatically defined using the following logic:
 ```ts
 const cpuSize = os.cpus().length;
 const maxWorkers = Math.max(1, cpuSize >= 6 ? (cpuSize / 2) : cpuSize - 1);
@@ -81,7 +81,7 @@ const maxWorkers = Math.max(1, cpuSize >= 6 ? (cpuSize / 2) : cpuSize - 1);
 
 #### settings.minWorkers
 **Optional**<br>
-Type: `number | undefined`<br>
+Type: `number`<br>
 Default: `0`
 
 Defines the minimum number of workers the Job System will instantiate on startup.
@@ -90,18 +90,18 @@ Defines the minimum number of workers the Job System will instantiate on startup
 
 #### settings.idleTimeout
 **Optional**<br>
-Type: `number | undefined`<br>
+Type: `number`<br>
 Default: `0`
 
 Defines the maximum idle time of a worker inside the pool, after this time the worker will be terminated.
 The timer resets if a new work is schedule to that worker.
 
-> **Important:** If the value is set to `0` the Worker stays alive until the shutdown method is called.
+> **Important:** If the value is set to `0` the Worker stays alive until the `shutdown()` method is called.
 
 #### settings.useMainThread
 **Optional**<br>
-Type: `boolean | undefined`<br>
-Default: `undefined`
+Type: `boolean`<br>
+Default: `false`
 
 Use the main thread if no worker is available.
 
@@ -137,13 +137,9 @@ Default: `undefined`
 
 A list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
 
-### complete()
+### shutdown()
 
-Wait all jobs in the queue to complete.
-
-### shutdown(waitForComplete?)
-
-Shutdown the Job System.
+Shutdown the Thread Pool, it will wait for all jobs to complete.
 
 > **Important:** If the `schedule` method is called after `shutdown`, an error will occur!
 

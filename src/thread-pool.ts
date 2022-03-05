@@ -14,11 +14,13 @@ import { WorkerThread } from './worker-thread';
 export interface ThreadPoolSettings {
     /**
      * Defines the maximum number of workers the Job System can instantiate.
+     * Default to 0(automatic).
      */
     maxWorkers: number;
 
     /**
      * Defines the minimum number of workers the Job System will instantiate on startup.
+     * Default to 0.
      */
     minWorkers: number;
 
@@ -27,7 +29,7 @@ export interface ThreadPoolSettings {
      * 
      * The timer resets if a new work is schedule to that worker.
      */
-    idleTimeout?: number;
+    idleTimeout: number;
 
     /**
      * Use the main thread if no worker is available.
@@ -36,9 +38,10 @@ export interface ThreadPoolSettings {
 }
 
 const cpuSize = cpus().length;
+const defaultMaxWorkers = Math.max(1, cpuSize >= 6 ? (cpuSize / 2) : cpuSize - 1);
 export class ThreadPool {
     poolSettings: Readonly<ThreadPoolSettings> = {
-        maxWorkers: Math.max(1, cpuSize >= 6 ? (cpuSize / 2) : cpuSize - 1),
+        maxWorkers: defaultMaxWorkers,
         minWorkers: 0,
         idleTimeout: 0,
         useMainThread: false
@@ -47,9 +50,44 @@ export class ThreadPool {
     #pool: WorkerThread[] = [];
     #poolCount: number = 0;
     #mainThreadCount: number = 0;
+    #isDead: boolean = false;
 
     constructor(poolSettings?: Partial<ThreadPoolSettings>) {
-        this.poolSettings = Object.assign({}, this.poolSettings, poolSettings);
+        this.#validateAndMergeSettings(poolSettings);
+    }
+
+    #validateAndMergeSettings(poolSettings?: Partial<ThreadPoolSettings>) {
+        if (!poolSettings)
+            return;
+
+        const settings = Object.assign({}, this.poolSettings, poolSettings) as ThreadPoolSettings;
+
+        if (typeof settings.maxWorkers !== 'number' || settings.maxWorkers < 0) {
+            throw new Error('Invalid pool settings.');
+        }
+
+        if (typeof settings.minWorkers !== 'number' || settings.minWorkers < 0) {
+            throw new Error('Invalid pool settings.');
+        }
+
+        if (typeof settings.useMainThread !== 'boolean') {
+            throw new Error('Invalid pool settings.');
+        }
+
+        if (typeof settings.idleTimeout !== 'number' || settings.idleTimeout < 0) {
+            throw new Error('Invalid pool settings.');
+        }
+
+        // maxWorkers.
+        settings.maxWorkers = settings.maxWorkers === 0 ? defaultMaxWorkers : settings.maxWorkers;
+
+        if (settings.minWorkers > settings.maxWorkers) {
+            throw new Error('Invalid pool settings');
+        }
+
+        this.poolSettings = settings;
+
+        // TODO: Apply Settings(resizePool / idleTimeout).
     }
 
     #selectWorker() {
@@ -61,7 +99,8 @@ export class ThreadPool {
             return inactive;
         }
 
-        if (this.#pool.length < this.poolSettings.maxWorkers!) {
+        const maxWorkers = this.poolSettings.maxWorkers === 0 ? defaultMaxWorkers : this.poolSettings.maxWorkers;
+        if (this.#pool.length < maxWorkers) {
             return this.#spawnWorker();
         }
 
@@ -91,7 +130,8 @@ export class ThreadPool {
     }
 
     #checkWorker(worker: WorkerThread) {
-        if (worker.active === 0 && this.#pool.length > this.poolSettings.maxWorkers) {
+        const maxWorkers = this.poolSettings.maxWorkers === 0 ? defaultMaxWorkers : this.poolSettings.maxWorkers;
+        if (worker.active === 0 && this.#pool.length > maxWorkers) {
             const idx = this.#pool.indexOf(worker);
             this.#pool.splice(idx, 1);
             worker.instance.terminate();
@@ -119,7 +159,7 @@ export class ThreadPool {
         }
     }
 
-    public async run<T = any, D = any>(
+    async #run<T = any, D = any>(
         jobHandle: JobHandle<T>,
         job: (data?: D) => T | Promise<T>,
         data?: D,
@@ -204,6 +244,9 @@ export class ThreadPool {
         if (typeof job !== "function")
             throw new Error("Job parameter must be a function.");
 
+        if (this.#isDead)
+            throw new Error("This thread pool is shutdown");
+
         const promises = Array.isArray(dependencies) ? dependencies.map(async x => {
             if (x instanceof JobHandle)
                 return x.complete();
@@ -216,9 +259,13 @@ export class ThreadPool {
         const jobHandle = new JobHandle<T>();
 
         dependency
-            .then(() => this.run(jobHandle, job, data, transferList));
+            .then(() => this.#run(jobHandle, job, data, transferList));
 
         return jobHandle;
+    }
+
+    public shutdown() {
+        this.#isDead = true;
     }
 
 }
