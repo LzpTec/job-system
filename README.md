@@ -20,84 +20,43 @@ The following examples uses typescript
 
 ## Basic
 ```ts
-import { JobSystem } from '@lzptec/job-system';
+import { ThreadPool } from '@lzptec/job-system';
 
-const jobSystem = new JobSystem();
+const threadPool = new ThreadPool();
+
 const job = ({ a, b }) => a * b;
 
 // When we schedule a Job the return will be a JobHandle<T>.
-const jobHandle = await jobSystem.schedule(job, { a: 2, b: 5 });
+const jobHandle = await threadPool.schedule(job, { a: 2, b: 5 });
 // OR
-// const jobHandle = await jobSystem.schedule(({ a, b }) => a * b, { a: 2, b: 5 });
+const jobHandle = await threadPool.schedule(({ a, b }) => a * b, { a: 2, b: 5 });
 
 // If we want to get the result, we need to call complete()
 const result = await jobHandle.complete();
 console.log(result); // 10
-
-// If you dont need the job system anymore.
-jobSystem.shutdown();
-
 ```
 
 ## Advanced
 ```ts
-import { JobSystem, Job } from '@lzptec/job-system';
+import { ThreadPool } from '@lzptec/job-system';
 
-const jobSystem = new JobSystem();
-
-// Here we create a class specific for this job.
-class MultiplicationJob extends Job<number>{
-    // This is optional, only use this to have access to types on execute() / .data
-    override data!: { a: number, b: number };
-
-    // The constructor is optional, more on that bellow
-    constructor(data: { a: number, b: number }) {
-        super();
-        this.data = data;
-    }
-
-    // This method will be called on the worker thread.
-    override execute() {
-        return this.data.a * this.data.b;
-    }
-}
-
-const job = new MultiplicationJob({ a: 2, b: 5 });
+const threadPool = new ThreadPool();
 
 // When we schedule a Job the return will be a JobHandle<T>.
-const jobHandle = jobSystem.schedule(job);
+const jobHandle = threadPool.schedule(({ a, b }) => a * b, { a: 2, b: 5 });
 
 // If we want to get the result, we need to call complete()
 const result = await jobHandle.complete();
 console.log(result); // 10
 
-// Here we create a class specific for this job.
-class LogJob extends Job<void>{
-    // This is optional, only use this to have access to types on execute() / .data
-    override data!: number;
-
-    override execute() {
-        console.log(`Hello from Job n${this.data}`);
-    }
-}
-
 // We can use the JobHandle<T> as Dependency to another job, this will ensure that a job run only after the dependency job.
-const job1 = new LogJob();
-job1.data = 1;
-const job2 = new LogJob();
-job2.data = 2;
-
-const job1Handle = jobSystem.schedule(job1);
-const job2Handle = jobSystem.schedule(job2, [job1Handle]);
+const job1Handle = threadPool.schedule((data) => console.log(`Hello from Job n${this.data}`), 1);
+const job2Handle = threadPool.schedule((data) => console.log(`Hello from Job n${this.data}`), 2, [job1Handle]);
 
 await job2Handle.complete();
 // Console
 // -> Hello from Job n1
 // -> Hello from Job n2
-
-// If you dont need the job system anymore.
-jobSystem.shutdown();
-
 ```
 
 # API

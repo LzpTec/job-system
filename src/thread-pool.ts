@@ -2,6 +2,7 @@ import { cpus } from 'os';
 import * as path from 'path';
 import { clearTimeout } from 'timers';
 import { Worker } from 'worker_threads';
+import { SerializableValue } from '.';
 import { JobHandle } from './job-handle';
 import { MainThread } from './main-thread';
 import { Transferable } from './types/transferable';
@@ -46,6 +47,10 @@ export class ThreadPool {
     #pool: WorkerThread[] = [];
     #poolCount: number = 0;
     #mainThreadCount: number = 0;
+
+    constructor(poolSettings?: Partial<ThreadPoolSettings>) {
+        this.poolSettings = Object.assign({}, this.poolSettings, poolSettings);
+    }
 
     #selectWorker() {
         const inactive = this.#pool.find(x => x.active === 0);
@@ -133,4 +138,87 @@ export class ThreadPool {
                 this.#checkWorker(worker);
             });
     }
+
+    /**
+     * Schedule a job to run.
+     * 
+     * @param job The job to run.
+     * 
+     * @returns Job Handle.
+     */
+    schedule<T = any>(
+        job: () => T | Promise<T>
+    ): JobHandle<T>;
+
+    /**
+     * Schedule a job to run.
+     * 
+     * @param job The job to run.
+     * @param data data to worker(Needs to be serializable).
+     * 
+     * @returns Job Handle.
+     */
+    schedule<T = any, D extends SerializableValue = any>(
+        job: (data: D) => T | Promise<T>,
+        data: D
+    ): JobHandle<T>;
+
+    /**
+     * Schedule a job to run.
+     * 
+     * @param job The job to run.
+     * @param data data to worker(Needs to be serializable).
+     * @param dependencies A list of depedencies, use it to ensure that a job executes after all the dependencies has completed execution.
+     * 
+     * @returns Job Handle.
+     */
+    schedule<T = any, D extends SerializableValue = any>(
+        job: (data: D) => T | Promise<T>,
+        data: D,
+        dependencies: JobHandle<any>[]
+    ): JobHandle<T>;
+
+    /**
+     * Schedule a job to run.
+     * 
+     * @param job The job to run.
+     * @param data data to worker(Needs to be serializable).
+     * @param dependencies A list of depedencies, use it to ensure that a job executes after all the dependencies has completed execution.
+     * @param transferList list of transferable objects like ArrayBuffers to be transferred to the receiving worker thread.
+     * 
+     * @returns Job Handle.
+     */
+    schedule<T = any, D extends SerializableValue = any, U extends SerializableValue[] = any[]>(
+        job: (data: D) => T | Promise<T>,
+        data: D,
+        dependencies: JobHandle<any>[],
+        transferList: Transferable[]
+    ): JobHandle<T>;
+
+    public schedule<T = any, D extends SerializableValue = any>(
+        job: (data?: D) => T | Promise<T>,
+        data?: D,
+        dependencies?: JobHandle<any>[],
+        transferList?: Transferable[]
+    ): JobHandle<T> {
+        if (typeof job !== "function")
+            throw new Error("Job parameter must be a function.");
+
+        const promises = Array.isArray(dependencies) ? dependencies.map(async x => {
+            if (x instanceof JobHandle)
+                return x.complete();
+
+            return;
+        }) : undefined;
+
+        const dependency = (promises ? Promise.all(promises) : Promise.resolve());
+
+        const jobHandle = new JobHandle<T>();
+
+        dependency
+            .then(() => this.run(jobHandle, job, data, transferList));
+
+        return jobHandle;
+    }
+
 }

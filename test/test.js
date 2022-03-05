@@ -1,10 +1,12 @@
 const test = require('ava');
-const JobSystem = require(__dirname + '/../dist/index.js').JobSystem;
+const ThreadPool = require(__dirname + '/../dist/index.js').ThreadPool;
+
+const threadPool = new ThreadPool();
 
 test('schedule(data only)', async t => {
     const job = ({ a, b }) => a * b;
 
-    await JobSystem
+    await threadPool
         .schedule(job, { a: 3, b: 20 })
         .complete()
         .then(result => {
@@ -18,7 +20,7 @@ test('schedule(data only)', async t => {
 test('error', async t => {
     const job = () => { throw new Error("Fail"); };
 
-    await JobSystem
+    await threadPool
         .schedule(job)
         .complete()
         .then(() => {
@@ -31,7 +33,7 @@ test('error', async t => {
 });
 
 test('shutdown(wait)', async t => {
-    const jobSchedule = JobSystem
+    const jobSchedule = threadPool
         .schedule(({ a, b }) => a * b, { a: 3, b: 20 });
 
     await jobSchedule
