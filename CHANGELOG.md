@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.5.0-0](https://github.com/LzpTec/job-system/compare/v0.4.0...v0.5.0-0) (2022-03-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* Removed JobSystem class, use ThreadPool instead.
+* Complete Overhaul of the JobSystem.
+* Remove Job class.
+
+### Features
+
+* Complete Overhaul of the JobSystem. ([cf23bb3](https://github.com/LzpTec/job-system/commit/cf23bb363bbc79896630e4497e8847805f1c7929))
+* Remove Job class. ([f507430](https://github.com/LzpTec/job-system/commit/f507430bc88cd467a5b6be73efb4e74a96d7833a))
+* Removed JobSystem class, use ThreadPool instead. ([472e2c8](https://github.com/LzpTec/job-system/commit/472e2c8d4f68419c39135d6f231ef38e52489365))
+
+
+### Refactor
+
+* Improved ThreadPool internal logic. ([095d452](https://github.com/LzpTec/job-system/commit/095d452a4d6e232a102b42ffdb15ad09eafedd30))
+
+
+### Docs
+
+* Add info about 1.0.0 ([0b9a6d1](https://github.com/LzpTec/job-system/commit/0b9a6d1a83bcde2e6e075c302589c07e453ea8e0))
+* Add TODO list. ([53fef73](https://github.com/LzpTec/job-system/commit/53fef73c628c38c919f367fd382c0962414d8b33))
+* Improved 1.0.0 info. ([e279733](https://github.com/LzpTec/job-system/commit/e2797333494919caafa6a72a0c4116c10e25204b))
+* Improved readme. ([f45c9ed](https://github.com/LzpTec/job-system/commit/f45c9ed62ebf39522e30eeb0849b832bdf5bf562))
+* Removed this from advanced example. ([a52a2ab](https://github.com/LzpTec/job-system/commit/a52a2ab1d1056d5f4a134cc35d18ecde42a50d7f))
+* Update TODO list. ([7e38f5f](https://github.com/LzpTec/job-system/commit/7e38f5fa6819206728e157a44370061cd32f992a))
+
 ## [0.4.0](https://github.com/LzpTec/job-system/compare/v0.3.0...v0.4.0) (2021-11-15)
 
 
